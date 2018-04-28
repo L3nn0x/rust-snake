@@ -21,8 +21,11 @@ enum Direction {
     Down
 }
 
+struct World {
+    gl: GlGraphics
+}
+
 struct Game {
-    gl: GlGraphics,
     snake: Snake,
     apple: (i32, i32)
 }
@@ -36,36 +39,41 @@ impl Game {
 }
 
 impl State for Game {
-    fn render(&mut self, arg: &RenderArgs) {
+    fn render(&self, world: &mut World, arg: &RenderArgs) {
         use graphics;
 
         let GREEN = [0.0, 1.0, 0.0, 1.0];
         let ORANGE = [1.0, 1.0, 0.0, 1.0];
 
-        self.gl.draw(arg.viewport(), |_c, gl| {
+        world.gl.draw(arg.viewport(), |_c, gl| {
             graphics::clear(GREEN, gl);
         });
 
-        self.snake.render(&mut self.gl, arg);
+        self.snake.render(world, arg);
 
-        let apple = self.apple.clone();
-
-        self.gl.draw(arg.viewport(), |c, gl| {
+        world.gl.draw(arg.viewport(), |c, gl| {
             let transform = c.transform;
 
             let square = graphics::rectangle::square(
-                (apple.0 * 20) as f64,
-                (apple.1 * 20) as f64, 20_f64
+                (self.apple.0 * 20) as f64,
+                (self.apple.1 * 20) as f64, 20_f64
             );
             graphics::rectangle(ORANGE, square, transform, gl);
         });
     }
 
-    fn update(&mut self, u: &UpdateArgs) -> Transition {
-        if self.snake.update(&self.apple) {
-            self.generate_apple();
+    fn update(&mut self, _world: &mut World, u: &UpdateArgs) -> Transition {
+        if self.snake.update(u) {
+            Transition::Pop
+        } else {
+            if *self.snake.get_head() == self.apple {
+                self.snake.grow();
+                while self.snake.is_body(&self.apple) {
+                    self.generate_apple();
+                }
+            }
+            Transition::None
         }
-        Transition::None
     }
 
     fn handle_event(&mut self, btn: &Button) -> Transition {
@@ -84,11 +92,14 @@ impl State for Game {
 
 struct Snake {
     body: LinkedList<(i32, i32)>,
-    dir: Direction
+    dir: Direction,
+    last: (i32, i32),
+    dt: f64,
+    update: f64
 }
 
 impl Snake {
-    fn render(&self, gl: &mut GlGraphics, args: &RenderArgs) {
+    fn render(&self, world: &mut World, args: &RenderArgs) {
         use graphics;
 
         let RED = [1.0, 0.0, 0.0, 1.0];
@@ -99,14 +110,31 @@ impl Snake {
                     (y * 20) as f64, 20_f64)
         }).collect();
 
-        gl.draw(args.viewport(), |c, gl| {
+        world.gl.draw(args.viewport(), |c, gl| {
             let transform = c.transform;
 
             squares.into_iter().for_each(|square| graphics::rectangle(RED, square, transform, gl));
         });
     }
 
-    fn update(&mut self, apple: &(i32, i32)) -> bool {
+    fn get_head(&self) -> &(i32, i32) {
+        &self.body.front().expect("Snake has no body")
+    }
+
+    fn grow(&mut self) {
+        self.body.push_back(self.last);
+    }
+
+    fn is_body(&self, pos: &(i32, i32)) -> bool {
+        self.body.contains(pos)
+    }
+
+    fn update(&mut self, u: &UpdateArgs) -> bool {
+        self.dt += u.dt;
+        if self.dt < self.update {
+            return false;
+        }
+        self.dt = 0_f64;
         let mut new_head = (*self.body.front().expect("Snake has no body")).clone();
         match self.dir {
             Direction::Left => new_head.0 -= 1,
@@ -125,17 +153,13 @@ impl Snake {
         new_head.0 %= 600 / 20;
         new_head.1 %= 400 / 20;
 
-        if self.body.contains(&new_head) {
-            panic!("You loose");
+        if self.is_body(&new_head) {
+            return true;
         }
 
         self.body.push_front(new_head);
-        if new_head != *apple {
-            self.body.pop_back().unwrap();
-            false
-        } else {
-            true
-        }
+        self.last = self.body.pop_back().unwrap();
+        false
     }
 }
 
@@ -148,8 +172,8 @@ enum Transition {
 }
 
 trait State {
-    fn render(&mut self, args: &RenderArgs);
-    fn update(&mut self, args: &UpdateArgs) -> Transition;
+    fn render(&self, world: &mut World, args: &RenderArgs);
+    fn update(&mut self, world: &mut World, args: &UpdateArgs) -> Transition;
     fn handle_event(&mut self, btn: &Button) -> Transition;
     fn on_start(&mut self) {}
     fn on_stop(&mut self) {}
@@ -174,10 +198,10 @@ impl StateMachine {
         self.running
     }
 
-    fn render(&mut self, args: &RenderArgs) {
+    fn render(&self, world: &mut World, args: &RenderArgs) {
         if self.running {
-            let state = self.states.last_mut().unwrap();
-            state.render(args);
+            let state = self.states.last().unwrap();
+            state.render(world, args);
         }
     }
 
@@ -199,10 +223,10 @@ impl StateMachine {
         }
     }
 
-    fn update(&mut self, u: &UpdateArgs) {
+    fn update(&mut self, world: &mut World, u: &UpdateArgs) {
         if self.running {
             let trans = match self.states.last_mut() {
-                Some(ref mut state) => state.update(u),
+                Some(ref mut state) => state.update(world, u),
                 None => Transition::None
             };
             self.transition(trans);
@@ -273,31 +297,41 @@ fn main() {
                                     .opengl(opengl).exit_on_esc(true).build().unwrap();
     
     let game = Game {
-        gl: GlGraphics::new(opengl),
         snake: Snake { 
-            body: LinkedList::from_iter((vec![(0,0), (0,1)]).into_iter()),
-            dir: Direction::Right },
+            body: LinkedList::from_iter((vec![(1,0), (0,0)]).into_iter()),
+            dir: Direction::Right,
+            dt: 0_f64,
+            last: (0, 0),
+            update: 0.2
+        },
         apple: (3, 3)
+    };
+
+    let mut world = World {
+        gl: GlGraphics::new(opengl)
     };
 
 
     let mut state_machine = StateMachine::new(Box::new(game));
     state_machine.start();
 
-    let mut events = Events::new(EventSettings::new()).ups(8);
+    let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
         if let Some(r) = e.render_args() {
-            state_machine.render(&r);
+            state_machine.render(&mut world, &r);
         }
 
         if let Some(u) = e.update_args() {
-            state_machine.update(&u);
+            state_machine.update(&mut world, &u);
         }
 
         if let Some(k) = e.button_args() {
             if k.state == ButtonState::Press {
                 state_machine.handle_event(&k.button);
             }
+        }
+        if !state_machine.is_running() {
+            break
         }
     }
 }
