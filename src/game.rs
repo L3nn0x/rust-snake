@@ -15,7 +15,7 @@ enum Direction {
     Down
 }
 
-pub struct Lost;
+pub struct Lost(i32);
 
 impl State for Lost {
     fn render(&self, world: &mut World, c: &Context, g: &mut G2d) {
@@ -24,6 +24,9 @@ impl State for Lost {
         let transform = c.transform.trans(10.0, 12.0);
         let size = Text::new(12);
         size.draw("You lost!", &mut world.font, &c.draw_state, transform, g);
+
+        let transform = c.transform.trans(50.0, 50.0);
+        size.draw(&format!("Your score: {}", self.0), &mut world.font, &c.draw_state, transform, g);
     }
     fn update(&mut self, args: &UpdateArgs) -> Transition {
         Transition::None
@@ -78,7 +81,7 @@ impl State for Game {
 
     fn update(&mut self, u: &UpdateArgs) -> Transition {
         if self.snake.update(u) {
-            Transition::Switch(Box::new(Lost))
+            Transition::Switch(Box::new(Lost(self.snake.size())))
         } else {
             if *self.snake.get_head() == self.apple {
                 self.snake.grow();
@@ -125,6 +128,10 @@ impl Snake {
         let transform = c.transform;
 
         squares.into_iter().for_each(|square| rectangle(RED, square, transform, g));
+    }
+
+    fn size(&self) -> i32 {
+        self.body.len() as i32
     }
 
     fn get_head(&self) -> &(i32, i32) {
