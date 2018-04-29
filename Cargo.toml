@@ -4,8 +4,6 @@ version = "0.1.0"
 authors = ["L3nn0x <dragon83.super@gmail.com>"]
 
 [dependencies]
-piston = "*"
-piston2d-graphics = "*"
-pistoncore-glutin_window = "*"
-piston2d-opengl_graphics = "*"
+piston_window = "*"
 rand = "*"
+find_folder = "*"
