@@ -23,26 +23,26 @@ impl Menu {
 }
 
 impl State for Menu {
-    fn render(&self, world: &mut World, c: &Context, g: &mut G2d) {
-        let GREEN = [0.0, 1.0, 0.0, 1.0];
-        let BLACK = [0.0, 0.0, 0.0, 1.0];
+    fn render(&self, world: &mut World, c: &Context, g: &mut G2d) -> Result<(), Box<super::std::error::Error>> {
+        let green = [0.0, 1.0, 0.0, 1.0];
 
-        clear(GREEN, g);
+        clear(green, g);
         let transform = c.transform.trans(10.0, 12.0);
         let size = Text::new(12);
-        size.draw("Snake game", &mut world.font, &c.draw_state, transform, g);
+        size.draw("Snake game", &mut world.font, &c.draw_state, transform, g)?;
         let transform = c.transform.trans(14.0, 50.0);
-        size.draw("New game", &mut world.font, &c.draw_state, transform, g);
+        size.draw("New game", &mut world.font, &c.draw_state, transform, g)?;
         let transform = c.transform.trans(14.0, 70.0);
-        size.draw("Quit", &mut world.font, &c.draw_state, transform, g);
+        size.draw("Quit", &mut world.font, &c.draw_state, transform, g)?;
         let transform = match self.selection {
             Selection::NewGame => c.transform.trans(5.0, 50.0),
             Selection::Quit => c.transform.trans(5.0, 70.0)
         };
-        size.draw(">", &mut world.font, &c.draw_state, transform, g);
+        size.draw(">", &mut world.font, &c.draw_state, transform, g)?;
+        Ok(())
     }
 
-    fn update(&mut self, args: &UpdateArgs) -> Transition {
+    fn update(&mut self, _args: &UpdateArgs) -> Transition {
         Transition::None
     }
 

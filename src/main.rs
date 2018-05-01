@@ -32,7 +32,10 @@ fn main() {
 
     while let Some(e) = window.next() {
         window.draw_2d(&e, |c, mut g| {
-            state_machine.render(&mut world, &c, &mut g);
+            if let Err(e) = state_machine.render(&mut world, &c, &mut g) {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
         });
 
         if let Some(u) = e.update_args() {

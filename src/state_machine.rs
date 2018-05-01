@@ -10,7 +10,7 @@ pub enum Transition {
 }
 
 pub trait State {
-    fn render(&self, world: &mut World, c: &Context, g: &mut G2d);
+    fn render(&self, world: &mut World, c: &Context, g: &mut G2d) -> Result<(), Box<super::std::error::Error>>;
     fn update(&mut self, args: &UpdateArgs) -> Transition;
     fn handle_event(&mut self, btn: &Button) -> Transition;
     fn on_start(&mut self) {}
@@ -36,11 +36,12 @@ impl StateMachine {
         self.running
     }
 
-    pub fn render(&self, world: &mut World, c: &Context, g: &mut G2d) {
+    pub fn render(&self, world: &mut World, c: &Context, g: &mut G2d) -> Result<(), Box<super::std::error::Error>> {
         if self.running {
             let state = self.states.last().unwrap();
-            state.render(world, c, g);
+            state.render(world, c, g)?;
         }
+        Ok(())
     }
 
     pub fn start(&mut self) {

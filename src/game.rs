@@ -18,20 +18,21 @@ enum Direction {
 pub struct Lost(i32);
 
 impl State for Lost {
-    fn render(&self, world: &mut World, c: &Context, g: &mut G2d) {
-        let GREEN = [0.0, 1.0, 0.0, 1.0];
-        clear(GREEN, g);
+    fn render(&self, world: &mut World, c: &Context, g: &mut G2d) -> Result<(), Box<super::std::error::Error>> {
+        let green = [0.0, 1.0, 0.0, 1.0];
+        clear(green, g);
         let transform = c.transform.trans(10.0, 12.0);
         let size = Text::new(12);
-        size.draw("You lost!", &mut world.font, &c.draw_state, transform, g);
+        size.draw("You lost!", &mut world.font, &c.draw_state, transform, g)?;
 
         let transform = c.transform.trans(50.0, 50.0);
-        size.draw(&format!("Your score: {}", self.0), &mut world.font, &c.draw_state, transform, g);
+        size.draw(&format!("Your score: {}", self.0), &mut world.font, &c.draw_state, transform, g)?;
+        Ok(())
     }
-    fn update(&mut self, args: &UpdateArgs) -> Transition {
+    fn update(&mut self, _args: &UpdateArgs) -> Transition {
         Transition::None
     }
-    fn handle_event(&mut self, btn: &Button) -> Transition {
+    fn handle_event(&mut self, _btn: &Button) -> Transition {
         Transition::Pop
     }
 }
@@ -63,11 +64,11 @@ impl Game {
 }
 
 impl State for Game {
-    fn render(&self, world: &mut World, c: &Context, g: &mut G2d) {
-        let GREEN = [0.0, 1.0, 0.0, 1.0];
-        let ORANGE = [1.0, 1.0, 0.0, 1.0];
+    fn render(&self, world: &mut World, c: &Context, g: &mut G2d) -> Result<(), Box<super::std::error::Error>> {
+        let green = [0.0, 1.0, 0.0, 1.0];
+        let orange = [1.0, 1.0, 0.0, 1.0];
 
-        clear(GREEN, g);
+        clear(green, g);
         
         self.snake.render(world, c, g);
         let transform = c.transform;
@@ -76,7 +77,8 @@ impl State for Game {
             (self.apple.0 * 20) as f64,
             (self.apple.1 * 20) as f64, 20_f64
         );
-        rectangle(ORANGE, square, transform, g);
+        rectangle(orange, square, transform, g);
+        Ok(())
     }
 
     fn update(&mut self, u: &UpdateArgs) -> Transition {
@@ -116,8 +118,8 @@ struct Snake {
 }
 
 impl Snake {
-    fn render(&self, world: &mut World, c: &Context, g: &mut G2d) {
-        let RED = [1.0, 0.0, 0.0, 1.0];
+    fn render(&self, _world: &mut World, c: &Context, g: &mut G2d) {
+        let red = [1.0, 0.0, 0.0, 1.0];
 
         let squares: Vec<types::Rectangle> = self.body.iter().map(|&(x, y)| {
             rectangle::square(
@@ -127,7 +129,7 @@ impl Snake {
 
         let transform = c.transform;
 
-        squares.into_iter().for_each(|square| rectangle(RED, square, transform, g));
+        squares.into_iter().for_each(|square| rectangle(red, square, transform, g));
     }
 
     fn size(&self) -> i32 {
